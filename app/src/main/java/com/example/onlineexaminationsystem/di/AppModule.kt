@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.work.WorkManager
 import com.example.onlineexaminationsystem.R
 import com.example.onlineexaminationsystem.data.local.AppDatabase
 import com.example.onlineexaminationsystem.data.local.dao.ExamDao
 import com.example.onlineexaminationsystem.data.local.dao.StudentDao
-import com.example.onlineexaminationsystem.data.local.dao.UserDao
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,75 +24,68 @@ import javax.inject.Singleton
 object AppModule {
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context):AppDatabase{
+    fun provideFirebaseAuth(): FirebaseAuth {
+        return FirebaseAuth.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFirestore(): FirebaseFirestore {
+        return FirebaseFirestore.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "online_exam_db",
         )
-            // runs only once when the app is installed and the database is created for the first time
             .addCallback(object : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    // We use onOpen and insert with "OR IGNORE" to handle
+                    // both first-time creation and migrations safely.
+                    insertInitialCategories(db)
+                }
 
-
-                db.execSQL("""
-                    INSERT INTO users (name, email, password, role) 
-                    VALUES ('Admin', 'admin@gmail.com', 'admin123', 'ADMIN')
-                """)
-
-                db.execSQL("""
-                    INSERT INTO categories (name, imageRes) VALUES 
-                    ('Science', ${R.drawable.ic_science}),
-                    ('Math', ${R.drawable.ic_math}),
-                    ('Programming', ${R.drawable.ic_programming}),
-                    ('Geography', ${R.drawable.geography}),
-                    ('Physics', ${R.drawable.physics}),
-                    ('Biology', ${R.drawable.ic_biology}),
-                    ('Art', ${R.drawable.ic_art}),
-                    ('History', ${R.drawable.ic_history})
-                """)
-                // 3. Insert Exam (Linked to Category 'Programming' which is roughly ID 3)
-                // - category_id: 3
-                // - duration: 30 minutes = 1,800,000 milliseconds
-                // - passPercentage: 50
-                // - totalScore: 10
-                db.execSQL("""
-                    INSERT INTO exams (category_id, title, duration, passPercentage, totalScore) 
-                    VALUES (3, 'Android Basics', 60000, 50, 10)
-                """)
-
-                // 4. Insert Questions (Linked to Exam ID 1, which is 'Android Basics')
-                // - exam_id: 1 (Matches the exam inserted above)
-                // - options: JSON Array String
-                db.execSQL("""
-                    INSERT INTO questions (exam_id, text, options, correctAnswer, mark) 
-                    VALUES 
-                    (1, 'What is the base class for Layouts?', '["View", "ViewGroup", "Context"]', 1, 5),
-                    (1, 'Which language is used for Android?', '["Kotlin", "Swift", "Python"]', 0, 5)
-                """)
-
-
-            }
-        })
+                private fun insertInitialCategories(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+    INSERT OR IGNORE INTO categories (id, name, imageRes) VALUES 
+    ('cat_sci', 'Science', ${R.drawable.ic_science}),
+    ('cat_math', 'Math', ${R.drawable.ic_math}),
+    ('cat_prog', 'Programming', ${R.drawable.ic_programming}),
+    ('cat_geo', 'Geography', ${R.drawable.geography}),
+    ('cat_phys', 'Physics', ${R.drawable.physics}),
+    ('cat_bio', 'Biology', ${R.drawable.ic_biology}),
+    ('cat_art', 'Art', ${R.drawable.ic_art}),
+    ('cat_hist', 'History', ${R.drawable.ic_history})
+"""
+                    )
+                }
+            })
+            .fallbackToDestructiveMigration()
             .build()
     }
 
+
     @Provides
     @Singleton
-    fun provideUserDao(db:AppDatabase):UserDao{
-        return db.userDao()
-    }
-    @Provides
-    @Singleton
-    fun provideExamDao(db: AppDatabase):ExamDao{
+    fun provideExamDao(db: AppDatabase): ExamDao {
         return db.examDao()
     }
 
     @Provides
     @Singleton
-    fun provideStudentDao(db:AppDatabase):StudentDao{
+    fun provideStudentDao(db: AppDatabase): StudentDao {
         return db.studentDao()
     }
 
+    @Provides
+    @Singleton
+    fun provideWorkerManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
 }

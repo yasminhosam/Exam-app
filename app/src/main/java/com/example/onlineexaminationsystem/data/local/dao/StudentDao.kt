@@ -2,42 +2,50 @@ package com.example.onlineexaminationsystem.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.example.onlineexaminationsystem.data.model.AnswerSnapshot
-import com.example.onlineexaminationsystem.data.model.SubmittedExam
-import com.example.onlineexaminationsystem.data.model.TopStudent
-import com.example.onlineexaminationsystem.data.model.User
+import com.example.onlineexaminationsystem.domain.model.AnswerSnapshot
+import com.example.onlineexaminationsystem.domain.model.SubmittedExam
+import com.example.onlineexaminationsystem.domain.model.SubmittedExamWithSnapshots
+import com.example.onlineexaminationsystem.domain.model.TopStudent
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StudentDao {
 
     //save the result of the taken exam
-    @Insert
-    suspend fun insertSubmittedExam(submittedExam: SubmittedExam):Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSubmittedExam(submittedExam: SubmittedExam)
 
     //save the answers
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshots(snapshot:List<AnswerSnapshot>)
 
     @Query("SELECT * FROM answer_snapshots WHERE submitted_exam_id= :submittedExamId")
-    suspend fun getSnapshots(submittedExamId:Long):List<AnswerSnapshot>
+     fun getSnapshots(submittedExamId:String):Flow<List<AnswerSnapshot>>
 
 
     @Query("SELECT * FROM submitted_exams WHERE student_id= :studentId")
-    suspend fun getStudentHistory(studentId:Long):List<SubmittedExam>
+     fun getStudentHistory(studentId:String):Flow<List<SubmittedExam>>
+//
+//    @Query("""
+//        SELECT studentName AS name, MAX(score) AS score, grade
+//        FROM submitted_exams
+//        GROUP BY student_id
+//        ORDER BY score DESC
+//        LIMIT :limit
+//    """)
+//    fun getTopStudents(limit: Int = 10): Flow<List<TopStudent>>
 
-    @Query("SELECT users.name,submitted_exams.score,submitted_exams.grade " +
-            " FROM submitted_exams " +
-            "INNER JOIN users " +
-            "ON submitted_exams.student_id=users.id " +
-            "WHERE exam_id= :examId " +
-            "AND status='PASSED' " +
-            "ORDER by score desc ")
-    suspend fun getTopStudents(examId:Long):List<TopStudent>
+    @Transaction
+    @Query("SELECT * FROM submitted_exams WHERE isSynced = 0")
+    suspend fun getPendingSubmissionsWithSnapshots(): List<SubmittedExamWithSnapshots>
 
-    @Query("SELECT * FROM users WHERE id=:id ")
-    suspend fun getStudentById(id:Long): User
+    @Query("UPDATE submitted_exams SET isSynced = :isSynced WHERE id = :submissionId")
+    suspend fun updateSubmissionSyncStatus(submissionId: String, isSynced: Boolean)
 
 
+    @Query("UPDATE answer_snapshots SET isSynced = 1 WHERE submitted_exam_id = :submittedExamId")
+    suspend fun updateSnapshotsSyncStatus(submittedExamId: String)
 }

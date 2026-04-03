@@ -1,8 +1,7 @@
 package com.example.onlineexaminationsystem.data.local
 
 import androidx.room.TypeConverter
-import com.example.onlineexaminationsystem.data.model.Role
-import com.example.onlineexaminationsystem.data.model.Status
+import com.example.onlineexaminationsystem.domain.model.Status
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.Date
@@ -40,20 +39,13 @@ class Converters{
     fun durationTOLong(duration: Duration):Long{
         return duration.inWholeMilliseconds
     }
-    @TypeConverter
-    fun fromRole(role:Role):String{
-        return role.name
-    }
-    @TypeConverter
-    fun toRole(value: String):Role{
-        return Role.valueOf(value)
-    }
+
     @TypeConverter
     fun fromStatus(status: Status):String{
         return status.name
     }
     @TypeConverter
-    fun toStatus(value: String):Status{
+    fun toStatus(value: String): Status {
        return Status.valueOf(value)
     }
 }
