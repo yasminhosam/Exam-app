@@ -1,4 +1,4 @@
-package com.example.onlineexaminationsystem.domain
+package com.example.onlineexaminationsystem.data.sync
 
 import android.content.Context
 import android.util.Log

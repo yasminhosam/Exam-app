@@ -31,6 +31,7 @@ private val DarkColorScheme = darkColorScheme(
     // Error
     error = Color(0xFFF87171),
     onError = Color(0xFF450A0A)
+
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -40,7 +41,8 @@ private val LightColorScheme = lightColorScheme(
     surface = CardBackground,
     error = ErrorRed,
     onPrimary = Color.White,
-    onSurface = TextPrimary
+    onSurface = TextPrimary,
+
 )
 
 

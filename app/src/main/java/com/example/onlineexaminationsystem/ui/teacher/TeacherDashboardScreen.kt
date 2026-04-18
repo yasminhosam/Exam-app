@@ -1,6 +1,8 @@
 package com.example.onlineexaminationsystem.ui.teacher
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,12 +49,14 @@ fun TeacherDashboardScreen(
                     Column {
                         Text(
                             text = "Hello, ${state.teacherName}",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
                             text = "Manage your exams",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -61,9 +66,16 @@ fun TeacherDashboardScreen(
                         Image(
                             painter = painterResource(R.drawable.user),
                             contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape
+                                )
                         )
                     }
                 }

@@ -24,11 +24,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.onlineexaminationsystem.ui.theme.ExamAppColors
 
-private val CorrectGreen = Color(0xFF2E7D32)
-private val CorrectGreenBg = Color(0xFFE8F5E9)
-private val WrongRed = Color(0xFFC62828)
-private val WrongRedBg = Color(0xFFFFEBEE)
+//private val CorrectGreen = Color(0xFF2E7D32)
+//private val CorrectGreenBg = Color(0xFFE8F5E9)
+//private val WrongRed = Color(0xFFC62828)
+//private val WrongRedBg = Color(0xFFFFEBEE)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,9 +122,9 @@ fun ReviewExamScreen(
                             val isCorrect = snap.studentAnswerIndex == snap.correctAnswerIndex
                             val dotColor = when {
                                 isActive -> MaterialTheme.colorScheme.primary
-                                isCorrect -> CorrectGreen
+                                isCorrect -> ExamAppColors.correctText
                                 snap.studentAnswerIndex == -1 -> MaterialTheme.colorScheme.outline
-                                else -> WrongRed
+                                else -> ExamAppColors.wrongBackground
                             }
                             Box(
                                 modifier = Modifier
@@ -192,7 +193,7 @@ fun ReviewExamScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(WrongRedBg)
+                                    .background(ExamAppColors.wrongBackground)
                                     .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -200,13 +201,13 @@ fun ReviewExamScreen(
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = null,
-                                    tint = WrongRed,
+                                    tint = ExamAppColors.wrongBackground,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
                                     "This question was not answered",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = WrongRed
+                                    color = ExamAppColors.wrongText
                                 )
                             }
                         }
@@ -220,18 +221,18 @@ fun ReviewExamScreen(
                             val isWrongChoice = isStudentChoice && !isCorrect
 
                             val bgColor = when {
-                                isCorrect -> CorrectGreenBg
-                                isWrongChoice -> WrongRedBg
+                                isCorrect -> ExamAppColors.correctBackground
+                                isWrongChoice -> ExamAppColors.wrongBackground
                                 else -> MaterialTheme.colorScheme.surfaceVariant
                             }
                             val borderColor = when {
-                                isCorrect -> CorrectGreen
-                                isWrongChoice -> WrongRed
+                                isCorrect -> ExamAppColors.correctText
+                                isWrongChoice -> ExamAppColors.wrongText
                                 else -> Color.Transparent
                             }
                             val labelColor = when {
-                                isCorrect -> CorrectGreen
-                                isWrongChoice -> WrongRed
+                                isCorrect -> ExamAppColors.correctText
+                                isWrongChoice -> ExamAppColors.wrongText
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
 
@@ -280,13 +281,13 @@ fun ReviewExamScreen(
                                     isCorrect -> Icon(
                                         Icons.Default.Check,
                                         contentDescription = "Correct",
-                                        tint = CorrectGreen,
+                                        tint = ExamAppColors.correctText,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     isWrongChoice -> Icon(
                                         Icons.Default.Close,
                                         contentDescription = "Wrong",
-                                        tint = WrongRed,
+                                        tint = ExamAppColors.wrongText,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }

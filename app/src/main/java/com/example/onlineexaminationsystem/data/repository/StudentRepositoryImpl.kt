@@ -10,10 +10,9 @@ import androidx.work.WorkManager
 import com.example.onlineexaminationsystem.domain.model.Status
 
 import com.example.onlineexaminationsystem.data.local.dao.StudentDao
-import com.example.onlineexaminationsystem.data.remote.AnswerSnapshotDto
 import com.example.onlineexaminationsystem.data.remote.SubmittedExamDto
 import com.example.onlineexaminationsystem.domain.GradeCalculator
-import com.example.onlineexaminationsystem.domain.SyncWorker
+import com.example.onlineexaminationsystem.data.sync.SyncWorker
 import com.example.onlineexaminationsystem.domain.model.AnswerSnapshot
 import com.example.onlineexaminationsystem.domain.model.ExamWithDetails
 import com.example.onlineexaminationsystem.domain.model.SubmittedExam

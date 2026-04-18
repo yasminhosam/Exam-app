@@ -8,14 +8,12 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.onlineexaminationsystem.data.local.dao.ExamDao
-import com.example.onlineexaminationsystem.data.mapper.toRoomEntities
 import com.example.onlineexaminationsystem.domain.model.Category
 import com.example.onlineexaminationsystem.domain.model.Exam
 import com.example.onlineexaminationsystem.domain.model.ExamWithDetails
 import com.example.onlineexaminationsystem.domain.model.Question
 import com.example.onlineexaminationsystem.data.remote.ExamDto
-import com.example.onlineexaminationsystem.data.remote.QuestionDto
-import com.example.onlineexaminationsystem.domain.SyncWorker
+import com.example.onlineexaminationsystem.data.sync.SyncWorker
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
