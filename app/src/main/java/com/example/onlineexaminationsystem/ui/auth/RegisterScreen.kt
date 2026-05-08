@@ -44,6 +44,7 @@ fun RegisterScreen(
                         duration = SnackbarDuration.Long)
                     onNavigateToLogin()
                 }
+                else -> {}
             }
         }
     }

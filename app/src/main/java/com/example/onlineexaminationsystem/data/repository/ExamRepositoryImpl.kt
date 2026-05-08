@@ -13,9 +13,13 @@ import com.example.onlineexaminationsystem.domain.model.Exam
 import com.example.onlineexaminationsystem.domain.model.ExamWithDetails
 import com.example.onlineexaminationsystem.domain.model.Question
 import com.example.onlineexaminationsystem.data.remote.ExamDto
+import com.example.onlineexaminationsystem.data.remote.QuestionDto
 import com.example.onlineexaminationsystem.data.sync.SyncWorker
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
+
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -28,12 +32,18 @@ import kotlin.time.Duration.Companion.milliseconds
 class ExamRepositoryImpl @Inject constructor(
     private val examDao: ExamDao,
     private val firestore: FirebaseFirestore,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+
 ) : ExamRepository {
 
     override fun getAllExams(): Flow<List<ExamWithDetails>> = examDao.getAllUnDeletedExams()
-    override suspend fun getExamById(id: String): ExamWithDetails = examDao.getExamById(id)
-    override fun getExamsByCategory(categoryId: String): Flow<List<ExamWithDetails>> =
+    override suspend fun getExamById(id: String): ExamWithDetails {
+        // Fetch directly from the local Room database
+        val exam = examDao.getExamById(id)
+
+        // Handle the case where the exam doesn't exist locally
+        return exam ?: throw Exception("Exam with ID $id not found in local database")
+    }    override fun getExamsByCategory(categoryId: String): Flow<List<ExamWithDetails>> =
         examDao.getExamByCategoryId(categoryId)
 
     override fun getAllCategories(): Flow<List<Category>> = examDao.getAllCategories()
@@ -216,5 +226,44 @@ class ExamRepositoryImpl @Inject constructor(
 
         }
     }
+
+    override suspend fun updateExamWithQuestions(
+        examId: String,
+        title: String,
+        categoryId: String,
+        questions: MutableList<Question>,
+        duration: Duration,
+        passPercentage: Int
+    ) {
+        val totalScore = questions.sumOf { it.mark }
+        val examWithDetails = examDao.getExamById(examId)
+
+        val updatedExam = examWithDetails?.exam?.copy(
+            title = title,
+            categoryId = categoryId,
+            duration = duration,
+            passPercentage = passPercentage,
+            totalScore = totalScore,
+            isSynced = false
+        )
+        val keptQuestionIds = questions.map { it.id }
+        examDao.deleteRemovedQuestions(examId,keptQuestionIds)
+
+        val updatedQuestions = questions.map {
+            it.copy(
+                examId = examId,
+                isSynced = false)
+        }
+
+        if (updatedExam != null) {
+            examDao.updateExam(updatedExam)
+        }
+        examDao.insertQuestions(updatedQuestions)
+
+        triggerSync()
+
+
+    }
+
 
 }

@@ -7,6 +7,7 @@ import com.example.onlineexaminationsystem.domain.model.Role
 import com.example.onlineexaminationsystem.domain.repository.AuthRepository
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
 import com.example.onlineexaminationsystem.domain.repository.StudentRepository
+import com.example.onlineexaminationsystem.domain.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,6 +137,28 @@ class AuthViewModel @Inject constructor(
     }
 
 
+    fun onForgetPasswordClick() {
+        val state=_uiState.value
+
+        val emailError=validateEmail(state.email)
+        _uiState.update { it.copy(emailError = emailError,globalError = null) }
+        if(emailError !=null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+           val result=authRepository.resetPassword(state.email.trim())
+            _uiState.update { it.copy(isLoading = false) }
+            when(result){
+                is Resource.Success->{
+                    _events.emit(AuthEvent.SendResetPasswordLink)
+                }
+                is Resource.Error->{
+                    val errorMessage= result.message
+                    _events.emit(AuthEvent.ShowError(errorMessage))
+                }
+            }
+        }
+
+    }
     private fun validateName(name: String): String? {
         if (name.trim().length < 2) return "Your name must be at least two characters"
         return null
@@ -189,5 +212,8 @@ sealed class AuthEvent {
     object NavigateToStudent : AuthEvent()
     object NavigateToTeacher : AuthEvent()
     object NavigateToVerifyEmail : AuthEvent()
-
+    object SendResetPasswordLink : AuthEvent()
+    data class ShowError(val message: String):AuthEvent()
 }
+
+

@@ -25,17 +25,29 @@ fun CreateExamScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showAiDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            if (event is CreateExamEvent.ExamCreated) onExamCreated()
+            when(event){
+                is CreateExamEvent.ExamSaved ->{
+                    onExamCreated()
+                }
+                is CreateExamEvent.ShowError->{
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Exam", fontWeight = FontWeight.Bold) },
+                title = {
+                    val titleText = if (viewModel.examId == null) "Create Exam" else "Edit Exam"
+                    Text(titleText, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -110,6 +122,15 @@ fun CreateExamScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
+                    OutlinedButton(
+                        onClick = {showAiDialog=true},
+                        contentPadding = PaddingValues(horizontal = 12.dp , vertical = 6.dp),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "AI", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("AI")
+                    }
                     FilledTonalButton(
                         onClick = viewModel::addQuestion,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -117,6 +138,13 @@ fun CreateExamScreen(
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Add")
+                    }
+                }
+            }
+            if (state.isGeneratingAi) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
             }
@@ -154,9 +182,67 @@ fun CreateExamScreen(
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
+    if (showAiDialog) {
+        AiTopicDialog(
+            onDismiss = { showAiDialog = false },
+            onGenerate = { topic ->
+                viewModel.generateQuestionsFromAi(topic)
+                showAiDialog = false
+            }
+        )
+    }
+
 }
 
+@Composable
+fun AiTopicDialog(
+    onDismiss: () -> Unit,
+    onGenerate: (String) -> Unit
+) {
+    var topic by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
 
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+        title = { Text("Generate via AI") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Enter a topic to automatically generate 5 multiple-choice questions.")
+                OutlinedTextField(
+                    value = topic,
+                    onValueChange = {
+                        topic = it
+                        isError = false
+                    },
+                    label = { Text("Topic (e.g. OOP in Java)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = isError,
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (topic.isNotBlank()) {
+                        onGenerate(topic)
+                    } else {
+                        isError = true
+                    }
+                }
+            ) {
+                Text("Generate")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExamDetailsCard(

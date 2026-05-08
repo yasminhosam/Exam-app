@@ -42,7 +42,7 @@ interface ExamDao {
 
     @Transaction
     @Query("SELECT * FROM exams WHERE id = :examId")
-    suspend fun getExamById(examId: String): ExamWithDetails
+    suspend fun getExamById(examId: String): ExamWithDetails?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuestions(questions: List<Question>)
@@ -50,8 +50,13 @@ interface ExamDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuestion(question: Question)
 
-    @Update
-    suspend fun updateQuestion(question: Question)
+
+    @Query("DELETE FROM questions WHERE exam_id = :examId AND id  NOT IN (:keptQuestionIds)")
+    suspend fun deleteRemovedQuestions(examId: String, keptQuestionIds: List<String>)
+
+
+     @Update
+     suspend fun updateExam(exam: Exam)
 
     @Query("SELECT * FROM categories")
     fun getAllCategories(): Flow<List<Category>>

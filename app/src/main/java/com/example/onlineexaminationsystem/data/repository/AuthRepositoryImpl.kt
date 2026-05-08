@@ -6,7 +6,11 @@ import com.example.onlineexaminationsystem.domain.model.BasicSession
 import com.example.onlineexaminationsystem.domain.model.Role
 import com.example.onlineexaminationsystem.domain.model.User
 import com.example.onlineexaminationsystem.domain.repository.AuthRepository
+import com.example.onlineexaminationsystem.domain.util.Resource
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -17,7 +21,12 @@ class AuthRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : AuthRepository {
 
-    override suspend fun signUp(name: String, email: String, password: String, role: Role): Result<User> {
+    override suspend fun signUp(
+        name: String,
+        email: String,
+        password: String,
+        role: Role
+    ): Result<User> {
         return try {
 
             val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
@@ -59,7 +68,8 @@ class AuthRepositoryImpl @Inject constructor(
 
 
             val document = firestore.collection("users").document(currentUser.uid).get().await()
-            val dto = document.toObject(UserDto::class.java) ?: throw Exception("User data missing from database")
+            val dto = document.toObject(UserDto::class.java)
+                ?: throw Exception("User data missing from database")
 
 
             val user = User(
@@ -76,13 +86,12 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
 
-
     override suspend fun logout() {
         firebaseAuth.signOut()
     }
 
     override fun getCurrentSession(): BasicSession? {
-        val firebaseUser=firebaseAuth.currentUser?: return null
+        val firebaseUser = firebaseAuth.currentUser ?: return null
         return BasicSession(
             id = firebaseUser.uid,
             name = firebaseUser.displayName ?: "User",
@@ -94,5 +103,26 @@ class AuthRepositoryImpl @Inject constructor(
         val user = firebaseAuth.currentUser
         user?.reload()?.await()
         return user?.isEmailVerified ?: false
+    }
+
+    override suspend fun resetPassword(email: String): Resource<Unit> {
+        return try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            Resource.Success(Unit)
+        } catch (e: FirebaseAuthException) {
+        when (e.errorCode) {
+            "ERROR_USER_NOT_FOUND" -> {
+                Resource.Error("This email is not registered. Please Sign Up first.")
+            }
+            "ERROR_INVALID_EMAIL" -> {
+                Resource.Error("The email address is badly formatted.")
+            }
+            else -> {
+                Resource.Error(e.message ?: "An error occurred")
+            }
+        }
+    } catch (e: Exception) {
+            Resource.Error(e.message ?: "An error occurred. Please try again.")
+        }
     }
 }

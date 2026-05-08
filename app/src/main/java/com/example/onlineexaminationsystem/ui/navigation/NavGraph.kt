@@ -175,21 +175,23 @@ fun NavGraph(
                 ReviewExamScreen(onBack = { navController.popBackStack() })
             }
 
-
-
             composable(Screen.TeacherDashboard.route) {
                 TeacherDashboardScreen(
                     onNavigateToCreateExam = { navController.navigate(Screen.CreateExam.route) },
                     onNavigateToTopStudents = { navController.navigate(Screen.TopStudents.route) },
                     onProfileClick = {
                         navController.navigate(Screen.Profile.route)
-                    }
+                    },
+                    onNavigateToEditExam = { examId -> navController.navigate(Screen.CreateExam.createRoute(examId)) }
 
 
                 )
             }
 
-            composable(Screen.CreateExam.route) {
+            composable(
+                route=Screen.CreateExam.route,
+                arguments = listOf(navArgument("examId") { type = NavType.StringType })
+                ) {
                 CreateExamScreen(
                     onExamCreated = { navController.popBackStack() },
                     onBack = { navController.popBackStack() }

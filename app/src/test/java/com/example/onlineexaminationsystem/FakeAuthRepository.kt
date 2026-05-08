@@ -3,6 +3,7 @@ import com.example.onlineexaminationsystem.domain.model.BasicSession
 import com.example.onlineexaminationsystem.domain.model.Role
 import com.example.onlineexaminationsystem.domain.model.User
 import com.example.onlineexaminationsystem.domain.repository.AuthRepository
+import com.example.onlineexaminationsystem.domain.util.Resource
 import com.google.firebase.auth.FirebaseUser
 
 class FakeAuthRepository:AuthRepository {
@@ -55,5 +56,14 @@ class FakeAuthRepository:AuthRepository {
 
     override suspend fun isEmailVerified(): Boolean {
         return shouldEmailBeVerified
+    }
+
+    override suspend fun resetPassword(email: String): Resource<Unit> {
+       val userExists=users.any{ it.email==email}
+        return if(userExists){
+            Resource.Success(Unit)
+        }else{
+            Resource.Error("This email is not registered. Please Sign Up first.")
+        }
     }
 }

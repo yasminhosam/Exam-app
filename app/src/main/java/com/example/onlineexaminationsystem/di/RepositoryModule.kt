@@ -2,9 +2,11 @@ package com.example.onlineexaminationsystem.di
 
 import com.example.onlineexaminationsystem.data.repository.AuthRepositoryImpl
 import com.example.onlineexaminationsystem.data.repository.ExamRepositoryImpl
+import com.example.onlineexaminationsystem.data.repository.SmartGenerationRepositoryImpl
 import com.example.onlineexaminationsystem.data.repository.StudentRepositoryImpl
 import com.example.onlineexaminationsystem.domain.repository.AuthRepository
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
+import com.example.onlineexaminationsystem.domain.repository.SmartGenerationRepository
 import com.example.onlineexaminationsystem.domain.repository.StudentRepository
 import dagger.Binds
 import dagger.Module
@@ -33,4 +35,11 @@ abstract class RepositoryModule {
     abstract fun bindStudentRepository(
         studentRepositoryImpl: StudentRepositoryImpl
     ): StudentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGenerationRepository(
+        generationRepositoryImpl: SmartGenerationRepositoryImpl
+    ): SmartGenerationRepository
+
 }

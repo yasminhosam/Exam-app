@@ -1,11 +1,15 @@
 package com.example.onlineexaminationsystem.ui.exam
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.onlineexaminationsystem.data.remote.QuestionDto
 import com.example.onlineexaminationsystem.domain.model.Category
 import com.example.onlineexaminationsystem.domain.model.Question
 import com.example.onlineexaminationsystem.domain.repository.AuthRepository
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
+import com.example.onlineexaminationsystem.domain.repository.SmartGenerationRepository
+import com.example.onlineexaminationsystem.domain.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,19 +25,54 @@ import kotlin.time.Duration.Companion.minutes
 @HiltViewModel
 class CreateExamViewModel @Inject constructor(
     private val examRepository: ExamRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val smartGenerationRepository: SmartGenerationRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
+    val rawExamId = savedStateHandle.get<String>("examId")
+    val examId: String? =
+        if (rawExamId == "null" || rawExamId == "{examId}" || rawExamId?.isBlank() == true) {
+            null
+        } else {
+            rawExamId
+        }
     private val _uiState = MutableStateFlow(CreateExamUiState())
     val uiState = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<CreateExamEvent>()
     val events = _events.asSharedFlow()
-    private val teacherId= authRepository.getCurrentSession()?.id
+    private val teacherId = authRepository.getCurrentSession()?.id
 
     init {
 
         loadCategories()
+        examId?.let { loadExamData(it) }
+    }
+
+    private fun loadExamData(id: String) {
+        viewModelScope.launch {
+            val examWithDetails = examRepository.getExamById(id)
+
+            _uiState.update { currentState ->
+                currentState.copy(
+                    title = examWithDetails.exam.title,
+                    durationInput = examWithDetails.exam.duration.inWholeMinutes.toString(),
+                    passPercentageInput = examWithDetails.exam.passPercentage.toString(),
+                    selectedCategory = currentState.categories.find { it.id == examWithDetails.exam.categoryId },
+                    questions = examWithDetails.questions.map { q ->
+                        QuestionDraft(
+                            id = q.id,
+                            text = q.text,
+                            options = q.options,
+                            correctOptionIndex = q.correctAnswer,
+                            markInput = q.mark.toString()
+                        )
+                    }
+                )
+            }
+        }
+
     }
 
     private fun loadCategories() {
@@ -44,15 +83,33 @@ class CreateExamViewModel @Inject constructor(
     }
 
     fun onTitleChange(value: String) = _uiState.update { it.copy(title = value, titleError = null) }
-    fun onDurationChange(value: String) = _uiState.update { it.copy(durationInput = value, durationError = null) }
-    fun onPassPercentageChange(value: String) = _uiState.update { it.copy(passPercentageInput = value, passPercentageError = null) }
-    fun onCategorySelected(category: Category) = _uiState.update { it.copy(selectedCategory = category) }
+    fun onDurationChange(value: String) =
+        _uiState.update { it.copy(durationInput = value, durationError = null) }
 
-    fun addQuestion() = _uiState.update { it.copy(questions = it.questions + QuestionDraft(id = UUID.randomUUID().toString())) }
-    fun removeQuestion(id: String) = _uiState.update { it.copy(questions = it.questions.filter { q -> q.id != id }) }
+    fun onPassPercentageChange(value: String) =
+        _uiState.update { it.copy(passPercentageInput = value, passPercentageError = null) }
+
+    fun onCategorySelected(category: Category) =
+        _uiState.update { it.copy(selectedCategory = category) }
+
+    fun addQuestion() = _uiState.update {
+        it.copy(
+            questions = it.questions + QuestionDraft(
+                id = UUID.randomUUID().toString()
+            )
+        )
+    }
+
+    fun removeQuestion(id: String) =
+        _uiState.update { it.copy(questions = it.questions.filter { q -> q.id != id }) }
 
     fun onQuestionTextChange(id: String, text: String) = _uiState.update {
-        it.copy(questions = it.questions.map { q -> if (q.id == id) q.copy(text = text, textError = null) else q })
+        it.copy(questions = it.questions.map { q ->
+            if (q.id == id) q.copy(
+                text = text,
+                textError = null
+            ) else q
+        })
     }
 
     fun onOptionChange(questionId: String, optionIndex: Int, value: String) = _uiState.update {
@@ -65,7 +122,11 @@ class CreateExamViewModel @Inject constructor(
     }
 
     fun onCorrectOptionChange(questionId: String, index: Int) = _uiState.update {
-        it.copy(questions = it.questions.map { q -> if (q.id == questionId) q.copy(correctOptionIndex = index) else q })
+        it.copy(questions = it.questions.map { q ->
+            if (q.id == questionId) q.copy(
+                correctOptionIndex = index
+            ) else q
+        })
     }
 
     fun onMarkChange(questionId: String, value: String) = _uiState.update {
@@ -84,9 +145,11 @@ class CreateExamViewModel @Inject constructor(
 
         val titleError = if (state.title.isBlank()) "Title is required" else null
         val duration = state.durationInput.toIntOrNull()
-        val durationError = if (duration == null || duration < 1) "Enter a valid duration in minutes" else null
+        val durationError =
+            if (duration == null || duration < 1) "Enter a valid duration in minutes" else null
         val passPercentage = state.passPercentageInput.toIntOrNull()
-        val passError = if (passPercentage == null || passPercentage !in 1..100) "Enter a value between 1 and 100" else null
+        val passError =
+            if (passPercentage == null || passPercentage !in 1..100) "Enter a value between 1 and 100" else null
         val categoryError = if (state.selectedCategory == null) "Select a category" else null
 
         val validatedQuestions = state.questions.map { q ->
@@ -95,7 +158,8 @@ class CreateExamViewModel @Inject constructor(
                 optionsError = if (q.options.any { it.isBlank() }) "Fill all options" else null
             )
         }
-        val hasQuestionErrors = validatedQuestions.any { it.textError != null || it.optionsError != null }
+        val hasQuestionErrors =
+            validatedQuestions.any { it.textError != null || it.optionsError != null }
 
         _uiState.update {
             it.copy(
@@ -107,7 +171,8 @@ class CreateExamViewModel @Inject constructor(
         }
 
         if (titleError != null || durationError != null || passError != null ||
-            categoryError != null || hasQuestionErrors || state.questions.isEmpty()) return
+            categoryError != null || hasQuestionErrors || state.questions.isEmpty()
+        ) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, globalError = null) }
@@ -115,7 +180,8 @@ class CreateExamViewModel @Inject constructor(
                 val questions = state.questions.map { draft ->
                     Question(
                         id = draft.id,
-                        examId = "",       // addExam re-assigns examId internally
+                        examId = examId
+                            ?: "",       // keeps old IDS for existing questions ,and uses UUID for new
                         text = draft.text.trim(),
                         options = draft.options.map { it.trim() },
                         correctAnswer = draft.correctOptionIndex,
@@ -124,16 +190,29 @@ class CreateExamViewModel @Inject constructor(
                     )
                 }.toMutableList()
 
-                // teacherId stored in Room teacher_id column and Firestore document
-                examRepository.addExam(
-                    teacherId = currentTeacherId,
-                    title = state.title.trim(),
-                    category = state.selectedCategory!!,
-                    questions = questions,
-                    duration = duration!!.minutes,
-                    passPercentage = passPercentage!!
-                )
-                _events.emit(CreateExamEvent.ExamCreated)
+                if (examId != null) {
+                    examRepository.updateExamWithQuestions(
+                        examId = examId,
+                        title = state.title.trim(),
+                        categoryId = state.selectedCategory!!.id,
+                        questions = questions,
+                        duration = duration!!.minutes,
+                        passPercentage = passPercentage!!
+                    )
+                } else {
+
+
+                    // teacherId stored in Room teacher_id column and Firestore document
+                    examRepository.addExam(
+                        teacherId = currentTeacherId,
+                        title = state.title.trim(),
+                        category = state.selectedCategory!!,
+                        questions = questions,
+                        duration = duration!!.minutes,
+                        passPercentage = passPercentage!!
+                    )
+                }
+                _events.emit(CreateExamEvent.ExamSaved)
             } catch (e: Exception) {
                 _uiState.update { it.copy(globalError = e.message ?: "Failed to save exam") }
             } finally {
@@ -141,6 +220,44 @@ class CreateExamViewModel @Inject constructor(
             }
         }
     }
+
+    fun generateQuestionsFromAi(topic: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGeneratingAi = true) }
+
+            val result = smartGenerationRepository.generateQuestionsForTopic(topic)
+
+            when (result) {
+                is Resource.Success -> {
+                    val drafQuestions = result.data.map { dto ->
+                        QuestionDraft(
+                            id = UUID.randomUUID().toString(),
+                            text = dto.text,
+                            options = dto.options,
+                            correctOptionIndex = dto.correctAnswer,
+                            markInput = dto.mark.toString()
+                        )
+                    }
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            questions = currentState.questions + drafQuestions,
+                            isGeneratingAi = false
+                        )
+                    }
+                }
+
+                is Resource.Error -> {
+                    _uiState.update { it.copy(isGeneratingAi = false) }
+                    val errorMessage =result.message
+                    _events.emit(CreateExamEvent.ShowError(errorMessage))
+                }
+
+            }
+        }
+
+    }
+
+
 }
 
 data class QuestionDraft(
@@ -165,9 +282,11 @@ data class CreateExamUiState(
     val titleError: String? = null,
     val durationError: String? = null,
     val passPercentageError: String? = null,
-    val categoryError: String? = null
+    val categoryError: String? = null,
+    val isGeneratingAi: Boolean = false
 )
 
 sealed class CreateExamEvent {
-    object ExamCreated : CreateExamEvent()
+    object ExamSaved : CreateExamEvent()
+    data class ShowError(val message: String) : CreateExamEvent()
 }

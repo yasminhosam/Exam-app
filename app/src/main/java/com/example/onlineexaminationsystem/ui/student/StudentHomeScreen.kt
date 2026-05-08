@@ -1,6 +1,7 @@
 package com.example.onlineexaminationsystem.ui.student
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -183,8 +185,16 @@ fun HomeScreen(
     }
 }
 
+
 @Composable
 fun CategoryItem(category: Category, onClick: () -> Unit) {
+    Log.d("ImageDebug", "Attempting to load image for: ${category.name}")
+    val context = LocalContext.current
+    val imageId = context.resources.getIdentifier(
+        category.imageRes,
+        "drawable",
+        context.packageName
+    )
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -212,7 +222,7 @@ fun CategoryItem(category: Category, onClick: () -> Unit) {
             ) {
 
                 Image(
-                    painter = painterResource(id = category.imageRes),
+                    painter = painterResource(id = imageId),
                     contentDescription = null,
                     modifier = Modifier
                         .size(80.dp)

@@ -3,6 +3,7 @@ package com.example.onlineexaminationsystem.ui.teacher
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +31,8 @@ fun TeacherDashboardScreen(
     viewModel: TeacherDashboardViewModel = hiltViewModel(),
     onNavigateToCreateExam: () -> Unit,
     onNavigateToTopStudents: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onNavigateToEditExam: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -145,7 +147,8 @@ fun TeacherDashboardScreen(
             items(state.exams, key = { it.exam.id }) { examWithDetails ->
                 TeacherExamCard(
                     examWithDetails = examWithDetails,
-                    onDelete = { viewModel.deleteExam(examWithDetails.exam.id) }
+                    onDelete = { viewModel.deleteExam(examWithDetails.exam.id) },
+                    onClick={onNavigateToEditExam(it)}
                 )
             }
 
@@ -207,7 +210,8 @@ private fun TopStudentsNavCard(onClick: () -> Unit) {
 @Composable
 private fun TeacherExamCard(
     examWithDetails: ExamWithDetails,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: (String) -> Unit,
 ) {
     val exam = examWithDetails.exam
     val questionCount = examWithDetails.questions.size
@@ -236,7 +240,7 @@ private fun TeacherExamCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick(exam.id) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(0.dp)

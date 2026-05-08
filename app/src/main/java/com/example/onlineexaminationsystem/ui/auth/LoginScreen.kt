@@ -15,12 +15,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -38,10 +40,30 @@ fun LoginScreen(
                 is AuthEvent.NavigateToStudent -> onLoginSuccessStudent()
                 is AuthEvent.NavigateToTeacher  -> onLoginSuccessTeacher()
                 is AuthEvent.NavigateToVerifyEmail -> {
-                    snackbarHostState.showSnackbar(
-                        message = "Please verify your email before logging in.",
-                        duration = SnackbarDuration.Long
-                    )
+                    launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Please verify your email before logging in.",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                }
+                is AuthEvent.SendResetPasswordLink -> {
+                    launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Password reset link has been sent to your email.",
+                            duration = SnackbarDuration.Long
+                        )
+
+                    }
+                }
+                is AuthEvent.ShowError ->{
+                    launch {
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            duration = SnackbarDuration.Long
+                        )
+
+                    }
                 }
 
             }
@@ -90,6 +112,10 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
                 isError = state.emailError != null,
                 supportingText = {
                     if (state.emailError != null)
@@ -115,10 +141,11 @@ fun LoginScreen(
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password,imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+
                 isError = state.passwordError != null,
                 supportingText = {
                     if (state.passwordError != null)
@@ -128,9 +155,16 @@ fun LoginScreen(
 
 
 
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Forget Password?",
+                    modifier = Modifier
+                        .clickable { viewModel.onForgetPasswordClick() }
+                        .padding(4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
+            Spacer(modifier = Modifier.height(18.dp))
             if (state.isLoading) {
                 CircularProgressIndicator()
             } else {

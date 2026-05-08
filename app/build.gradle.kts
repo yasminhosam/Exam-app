@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,11 +10,14 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
 
 }
-
+val apiKey = project.findProperty("GEMINI_API_KEY") as? String ?: ""
 android {
     namespace = "com.example.onlineexaminationsystem"
     compileSdk = 35
 
+    buildFeatures{
+        buildConfig=true
+    }
     defaultConfig {
         applicationId = "com.example.onlineexaminationsystem"
         minSdk = 26
@@ -20,6 +26,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -94,4 +102,8 @@ dependencies {
     implementation (platform("com.google.firebase:firebase-bom:34.9.0"))
     ksp("androidx.hilt:hilt-compiler:1.2.0")
 
+
+    implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
 }
+

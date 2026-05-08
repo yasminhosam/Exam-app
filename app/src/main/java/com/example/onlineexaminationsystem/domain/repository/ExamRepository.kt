@@ -1,6 +1,7 @@
 package com.example.onlineexaminationsystem.domain.repository
 
 import com.example.onlineexaminationsystem.domain.model.Category
+import com.example.onlineexaminationsystem.domain.model.Exam
 import com.example.onlineexaminationsystem.domain.model.ExamWithDetails
 import com.example.onlineexaminationsystem.domain.model.Question
 import kotlinx.coroutines.flow.Flow
@@ -30,4 +31,12 @@ interface ExamRepository {
     suspend fun deleteExam(id: String)
     suspend fun fetchTeacherExamsFromCloud(teacherId: String)
     suspend fun fetchAllAvailableExamsFromCloud()
+    suspend fun updateExamWithQuestions(
+        examId: String,
+        title: String,
+        categoryId: String,
+        questions: MutableList<Question>,
+        duration: Duration,
+        passPercentage: Int
+        )
 }

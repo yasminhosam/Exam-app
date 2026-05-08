@@ -11,5 +11,5 @@ data class Category(
     val id:String=randomUUID().toString(),
 
     val name:String,
-    @DrawableRes val imageRes: Int
+    val imageRes: String
 )
