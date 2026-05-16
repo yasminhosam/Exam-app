@@ -1,6 +1,6 @@
 # 📝 Online Examination System
 
-A full-featured Android exam management app built with **Jetpack Compose** and **MVVM architecture**. Supports two roles — **Teacher** to create and manage exams, and **Student** to take exams, track progress, and review answers. Offline-first with automatic background sync to Firebase.
+A full-featured Android exam management app built with **Jetpack Compose** and **MVVM architecture**. Supports two roles — **Teacher** to create and manage exams, and **Student** to take exams, track progress, and review answers. Offline-first with automatic background sync to Firebase, AI-powered question generation, and full Dark/Light theme support.
 
 ---
 
@@ -30,19 +30,24 @@ A full-featured Android exam management app built with **Jetpack Compose** and *
   </tr>
   <tr>
     <td align="center"><b>Create Exam</b></td>
+    <td align="center"><b>AI generation</b></td>
     <td align="center"><b>Top Students</b></td>
     <td align="center">Profile</td>
   </tr>
   <tr>
     <td><img src="https://github.com/user-attachments/assets/ded70d0b-3c99-467b-b288-03ff61ade6f9" width="220"/></td>
+    <td><img src="https://github.com/user-attachments/assets/838f64d6-4fe5-422f-8b16-ff3777d086cd" width="220"/></td>
     <td><img src="https://github.com/user-attachments/assets/87e6686f-5358-4641-aed8-9e2752868022" width="220"/></td>
-    <td><img src="https://github.com/user-attachments/assets/b6d9b799-e4eb-4f79-a66a-741f6e098301" width="220"/>
+    <td><img src="https://github.com/user-attachments/assets/28a2bc4e-1f99-4b37-9f1e-e44ab8df9ec2" width="220"/>/td>
 </table>
 
 ---
 
 ## ✨ Features
 
+### 🎨 UI & Experience
+* **Dark & Light Theme** — Full support for system dark mode with customized color schemes and Material 3 dynamic colors for a beautiful, eye-friendly UI in any environment.
+  
 ### 🎓 Student
 - **Register & Login** — Role-based authentication via Firebase Auth with form validation (email format, password strength)
 - **Browse Exams by Category** — Exams organized into categories: Science, Math, Programming, Geography, Physics, Biology, History, Art, and more
@@ -54,6 +59,7 @@ A full-featured Android exam management app built with **Jetpack Compose** and *
 
 ### 🛠️ Teacher
 - **Dashboard** — Overview of all created exams with question count, duration, and pass percentage
+- **AI Question Generation** — Automatically generate multiple-choice questions for any valid educational topic using Google Gemini AI
 - **Create Exams** — Add exams with title, duration, pass percentage, and category
 - **Add Questions** — Multiple-choice questions with configurable marks per question
 - **Delete Exams** — Remove exams with confirmation dialog (syncs deletion to Firestore)
@@ -72,10 +78,10 @@ app/
 │   │   └── Converters    # Type converters (Duration, List<String>)
 │   ├── remote/           # Firestore DTOs (ExamDto, QuestionDto, UserDto, SubmittedExamDto...)
 │   ├── mapper/           # Domain model ↔ DTO mappers
-│   └── repository/       # AuthRepositoryImpl, ExamRepositoryImpl, StudentRepositoryImpl
+│   └── repository/       # AuthRepositoryImpl, ExamRepositoryImpl, StudentRepositoryImpl, SmartGenerationRepositoryImpl
 ├── domain/
 │   ├── model/            # Exam, Question, Category, User, AnswerSnapshot, SubmittedExam...
-│   ├── repository/       # Repository interfaces
+│   ├── repository/       # Repository interfaces (including SmartGenerationRepository)
 │   ├── GradeCalculator   # Grade letter logic (A/B/C/D/F)
 │   └── SyncWorker        # WorkManager worker for offline → Firestore sync
 ├── di/                   # Hilt modules (AppModule, RepositoryModule)
@@ -131,6 +137,7 @@ The app uses an **offline-first** approach:
 | Remote DB | Firebase Firestore |
 | Auth | Firebase Authentication |
 | Background Sync | WorkManager (HiltWorker) |
+| AI Integration | Google Generative AI (Gemini)
 | Async | Kotlin Coroutines + Flow |
 | State | StateFlow + SharedFlow |
 | Serialization | Gson |
