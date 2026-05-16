@@ -8,9 +8,10 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.secrets.gradle.plugin)
 
 }
-val apiKey = project.findProperty("GEMINI_API_KEY") as? String ?: ""
+//val apiKey = project.findProperty("GEMINI_API_KEY") as? String ?: ""
 android {
     namespace = "com.example.onlineexaminationsystem"
     compileSdk = 35
@@ -27,7 +28,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+//        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -107,3 +108,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
 }
 
+secrets {
+    // To add your properties file, specify it here. Default is local.properties.
+    propertiesFileName = "local.properties"
+}
