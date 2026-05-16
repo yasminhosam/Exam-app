@@ -1,6 +1,5 @@
 package com.example.onlineexaminationsystem.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -42,17 +41,18 @@ val WrongRedBgDark = Color(0xFF4A0E0E)
 object ExamAppColors {
     val correctText: Color
         @Composable
-        get() = if (isSystemInDarkTheme()) CorrectGreenDark else CorrectGreenLight
+        // Replaced isSystemInDarkTheme() with LocalDarkTheme.current
+        get() = if (LocalDarkTheme.current) CorrectGreenDark else CorrectGreenLight
 
     val correctBackground: Color
         @Composable
-        get() = if (isSystemInDarkTheme()) CorrectGreenBgDark else CorrectGreenBgLight
+        get() = if (LocalDarkTheme.current) CorrectGreenBgDark else CorrectGreenBgLight
 
     val wrongText: Color
         @Composable
-        get() = if (isSystemInDarkTheme()) WrongRedDark else WrongRedLight
+        get() = if (LocalDarkTheme.current) WrongRedDark else WrongRedLight
 
     val wrongBackground: Color
         @Composable
-        get() = if (isSystemInDarkTheme()) WrongRedBgDark else WrongRedBgLight
+        get() = if (LocalDarkTheme.current) WrongRedBgDark else WrongRedBgLight
 }

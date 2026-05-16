@@ -8,7 +8,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.onlineexaminationsystem.domain.model.Status
-
 import com.example.onlineexaminationsystem.data.local.dao.StudentDao
 import com.example.onlineexaminationsystem.data.remote.SubmittedExamDto
 import com.example.onlineexaminationsystem.domain.GradeCalculator
@@ -29,8 +28,8 @@ class StudentRepositoryImpl @Inject constructor(
     private val studentDao: StudentDao,
     private val firestore: FirebaseFirestore,
     private val workManager: WorkManager
-): StudentRepository {
-    //studentAnswers key=questionId,value = selected option
+) : StudentRepository {
+
     override suspend fun submitExam(
         studentId: String,
         studentName: String,
@@ -66,8 +65,9 @@ class StudentRepositoryImpl @Inject constructor(
         val status =
             if (studentPercentage >= examWithDetails.exam.passPercentage) Status.PASSED else Status.FAILED
 
-        val gradeLetter =
-            GradeCalculator.calculateGradeLetter(studentPercentage, examWithDetails.exam.passPercentage)
+        val gradeLetter = GradeCalculator.calculateGradeLetter(
+            studentPercentage, examWithDetails.exam.passPercentage
+        )
 
         val submittedExam = SubmittedExam(
             id = submittedExamId,
@@ -84,30 +84,11 @@ class StudentRepositoryImpl @Inject constructor(
         studentDao.insertSubmittedExam(submittedExam)
         studentDao.insertSnapshots(snapshots)
         triggerSync()
-
-
-    }
-    private fun triggerSync(){
-        Log.d("SyncWorker", "start sync request")
-        val request= OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .build()
-        workManager.enqueueUniqueWork(
-            "sync_work",
-            ExistingWorkPolicy.KEEP,
-            request
-        )
-
-        Log.d("SyncWorker", "end sync request")
     }
 
-    override  fun getExamHistory(studentId: String) = studentDao.getStudentHistory(studentId)
-    override  fun getAnswerSnapshots(submittedExamId: String) =
+    override fun getExamHistory(studentId: String) = studentDao.getStudentHistory(studentId)
+
+    override fun getAnswerSnapshots(submittedExamId: String) =
         studentDao.getSnapshots(submittedExamId)
 
     override suspend fun fetchStudentHistoryFromCloud(studentId: String) {
@@ -136,10 +117,24 @@ class StudentRepositoryImpl @Inject constructor(
                 )
                 submissionsToInsert.add(submission)
 
+                // BUG FIX: Snapshots were assigned random new IDs on every sync call.
+                // Because the PK never matched an existing Room row, every re-login
+                // appended a full duplicate set of snapshots for every submission.
+                // The snapshots have a stable composite identity: they belong to a specific
+                // submittedExamId and represent a specific question. Use snapDto.id (the
+                // Firestore document field) so the same snapshot always upserts to the
+                // same Room row instead of creating new rows each time.
                 dto.snapshots.forEach { snapDto ->
+                    val snapshotId = if (snapDto.id.isNotBlank()) {
+                        snapDto.id
+                    } else {
+                        UUID.nameUUIDFromBytes(
+                            "${dto.id}|${snapDto.questionText}".toByteArray()
+                        ).toString()
+                    }
                     snapshotsToInsert.add(
                         AnswerSnapshot(
-                            id = UUID.randomUUID().toString(),
+                            id = snapshotId,
                             submittedExamId = dto.id,
                             questionText = snapDto.questionText,
                             options = snapDto.options,
@@ -155,14 +150,27 @@ class StudentRepositoryImpl @Inject constructor(
             submissionsToInsert.forEach { studentDao.insertSubmittedExam(it) }
             studentDao.insertSnapshots(snapshotsToInsert)
 
-            Log.d("DownwardSync", "Successfully fetched ${submissionsToInsert.size} submissions.")
-
+            Log.d("DownwardSync", "Synced ${submissionsToInsert.size} submission(s) for student.")
         } catch (e: Exception) {
             Log.e("DownwardSync", "Failed to fetch student history", e)
-        }    }
+        }
+    }
 
 
+    private fun triggerSync() {
+        Log.d("SyncWorker", "Enqueuing upward sync request")
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueueUniqueWork(
+            "sync_work",
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
 }
-
-
-

@@ -13,13 +13,9 @@ import com.example.onlineexaminationsystem.domain.model.Exam
 import com.example.onlineexaminationsystem.domain.model.ExamWithDetails
 import com.example.onlineexaminationsystem.domain.model.Question
 import com.example.onlineexaminationsystem.data.remote.ExamDto
-import com.example.onlineexaminationsystem.data.remote.QuestionDto
 import com.example.onlineexaminationsystem.data.sync.SyncWorker
 import com.example.onlineexaminationsystem.domain.repository.ExamRepository
-
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -33,26 +29,25 @@ class ExamRepositoryImpl @Inject constructor(
     private val examDao: ExamDao,
     private val firestore: FirebaseFirestore,
     private val workManager: WorkManager,
-
 ) : ExamRepository {
 
     override fun getAllExams(): Flow<List<ExamWithDetails>> = examDao.getAllUnDeletedExams()
-    override suspend fun getExamById(id: String): ExamWithDetails {
-        // Fetch directly from the local Room database
-        val exam = examDao.getExamById(id)
 
-        // Handle the case where the exam doesn't exist locally
-        return exam ?: throw Exception("Exam with ID $id not found in local database")
-    }    override fun getExamsByCategory(categoryId: String): Flow<List<ExamWithDetails>> =
+    override suspend fun getExamById(id: String): ExamWithDetails {
+        return examDao.getExamById(id)
+            ?: throw Exception("Exam with ID $id not found in local database")
+    }
+
+    override fun getExamsByCategory(categoryId: String): Flow<List<ExamWithDetails>> =
         examDao.getExamByCategoryId(categoryId)
 
     override fun getAllCategories(): Flow<List<Category>> = examDao.getAllCategories()
+
     override suspend fun getCategoryName(categoryId: String): String =
         examDao.getCategoryNameById(categoryId)
 
     override fun getExamsByTeacher(teacherId: String): Flow<List<ExamWithDetails>> =
         examDao.getExamsByTeacher(teacherId)
-
 
     override suspend fun addExam(
         teacherId: String,
@@ -64,7 +59,6 @@ class ExamRepositoryImpl @Inject constructor(
     ) {
         val examId = UUID.randomUUID().toString()
         val totalScore = questions.sumOf { it.mark }
-
 
         val newExam = Exam(
             id = examId,
@@ -82,36 +76,19 @@ class ExamRepositoryImpl @Inject constructor(
         }
         examDao.insertExam(newExam)
         examDao.insertQuestions(newQuestions)
-
         triggerSync()
-    }
-
-    private fun triggerSync() {
-
-        val request = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .build()
-
-        workManager.enqueueUniqueWork(
-            "sync_work",
-            ExistingWorkPolicy.KEEP,
-            request
-        )
-
     }
 
     override suspend fun addQuestionToExam(
         examId: String, text: String, options: List<String>, correctAnswerIndex: Int, mark: Int
     ) {
-        val questionId = UUID.randomUUID().toString()
         val newQuestion = Question(
-            id = questionId, examId = examId, text = text,
-            options = options, correctAnswer = correctAnswerIndex, mark = mark,
+            id = UUID.randomUUID().toString(),
+            examId = examId,
+            text = text,
+            options = options,
+            correctAnswer = correctAnswerIndex,
+            mark = mark,
             isSynced = false
         )
         examDao.insertQuestion(newQuestion)
@@ -121,110 +98,6 @@ class ExamRepositoryImpl @Inject constructor(
     override suspend fun deleteExam(id: String) {
         examDao.markExamAsDeleted(id)
         triggerSync()
-    }
-
-    override suspend fun fetchTeacherExamsFromCloud(teacherId: String) {
-        try {
-            val snapshot = firestore.collection("exams")
-                .whereEqualTo("teacherId", teacherId)
-                .get()
-                .await()
-
-            val examsToInsert = mutableListOf<Exam>()
-            val questionsToInsert = mutableListOf<Question>()
-
-            // Map DTOs to Room Entities
-            for (document in snapshot.documents) {
-                val dto = document.toObject(ExamDto::class.java) ?: continue
-
-
-                val exam = Exam(
-                    id = dto.id,
-                    teacherId = dto.teacherId,
-                    categoryId = dto.categoryId,
-                    title = dto.title,
-                    duration = Duration.parse(dto.durationMillis.toString()), // Adjust based on your mapping
-                    passPercentage = dto.passPercentage,
-                    totalScore = dto.totalScore,
-                    isSynced = true,
-                    isDeleted = false
-                )
-                examsToInsert.add(exam)
-
-                // Map the Questions
-                dto.questions.forEach { qDto ->
-                    questionsToInsert.add(
-                        Question(
-                            id = UUID.randomUUID().toString(),
-                            examId = dto.id,
-                            text = qDto.text,
-                            options = qDto.options,
-                            correctAnswer = qDto.correctAnswer,
-                            mark = qDto.mark,
-                            isSynced = true
-                        )
-                    )
-                }
-            }
-
-            examsToInsert.forEach { examDao.insertExam(it) }
-            examDao.insertQuestions(questionsToInsert)
-
-            Log.d("DownwardSync", "Successfully fetched ${examsToInsert.size} exams for teacher.")
-
-        } catch (e: Exception) {
-            Log.e("DownwardSync", "Failed to fetch teacher exams", e)
-        }
-    }
-
-    override suspend fun fetchAllAvailableExamsFromCloud() {
-        try {
-            val exams = firestore.collection("exams")
-                .get().await()
-
-            val examsToInsert = mutableListOf<Exam>()
-            val questionToInsert = mutableListOf<Question>()
-            for (document in exams.documents) {
-                val dto = document.toObject(ExamDto::class.java) ?: continue
-
-                val exam = Exam(
-                    id = dto.id,
-                    teacherId = dto.teacherId,
-                    categoryId = dto.categoryId,
-                    title = dto.title,
-                    duration = dto.durationMillis.milliseconds,
-                    passPercentage = dto.passPercentage,
-                    totalScore = dto.totalScore,
-                    isSynced = true,
-                    isDeleted = false
-                )
-                examsToInsert.add(exam)
-                dto.questions.forEach { qDto ->
-                    questionToInsert.add(
-                        Question(
-                            id = UUID.randomUUID().toString(),
-                            examId = dto.id,
-                            text = qDto.text,
-                            options = qDto.options,
-                            correctAnswer = qDto.correctAnswer,
-                            mark = qDto.mark,
-                            isSynced = true
-                        )
-                    )
-
-
-                }
-            }
-            examsToInsert.forEach { examDao.insertExam(it) }
-            examDao.insertQuestions(questionToInsert)
-            Log.d(
-                "DownwardSync",
-                "Successfully fetched ${examsToInsert.size} available exams for student."
-            )
-        } catch (e: Exception) {
-            Log.e("DownwardSync", "Failed to fetch available exams", e)
-
-        }
     }
 
     override suspend fun updateExamWithQuestions(
@@ -246,24 +119,155 @@ class ExamRepositoryImpl @Inject constructor(
             totalScore = totalScore,
             isSynced = false
         )
+
         val keptQuestionIds = questions.map { it.id }
-        examDao.deleteRemovedQuestions(examId,keptQuestionIds)
+        examDao.deleteRemovedQuestions(examId, keptQuestionIds)
 
         val updatedQuestions = questions.map {
-            it.copy(
-                examId = examId,
-                isSynced = false)
+            it.copy(examId = examId, isSynced = false)
         }
 
         if (updatedExam != null) {
             examDao.updateExam(updatedExam)
         }
         examDao.insertQuestions(updatedQuestions)
-
         triggerSync()
-
-
     }
 
+    override suspend fun fetchTeacherExamsFromCloud(teacherId: String) {
+        try {
+            val snapshot = firestore.collection("exams")
+                .whereEqualTo("teacherId", teacherId)
+                .get()
+                .await()
 
+            val examsToInsert = mutableListOf<Exam>()
+            val questionsToInsert = mutableListOf<Question>()
+
+            for (document in snapshot.documents) {
+                val dto = document.toObject(ExamDto::class.java) ?: continue
+
+
+                val exam = Exam(
+                    id = dto.id,
+                    teacherId = dto.teacherId,
+                    categoryId = dto.categoryId,
+                    title = dto.title,
+                    duration = dto.durationMillis.milliseconds,
+                    passPercentage = dto.passPercentage,
+                    totalScore = dto.totalScore,
+                    isSynced = true,
+                    isDeleted = false
+                )
+                examsToInsert.add(exam)
+
+                // BUG FIX : Questions were assigned random new IDs on every sync.
+                // When the teacher logs back in, each sync run inserts a fresh duplicate set
+                // of questions alongside the originals (because the PK never matches an
+                // existing row, so REPLACE never fires). Use qDto.id so the same Firestore
+                // question always maps to the same Room row and upserts cleanly.
+                dto.questions.forEach { qDto ->
+                    val questionId=if (qDto.id.isNotBlank()){
+                        qDto.id
+                    }else{
+                        UUID.nameUUIDFromBytes(
+                            "${exam.id}|${qDto.text}".toByteArray()
+                        ).toString()
+                    }
+
+                    questionsToInsert.add(
+                        Question(
+                            id = questionId,
+                            examId = dto.id,
+                            text = qDto.text,
+                            options = qDto.options,
+                            correctAnswer = qDto.correctAnswer,
+                            mark = qDto.mark,
+                            isSynced = true
+                        )
+                    )
+                }
+            }
+
+
+            examDao.insertExams(examsToInsert)
+            examDao.insertQuestions(questionsToInsert)
+
+            Log.d("DownwardSync", "Synced ${examsToInsert.size} teacher exam(s) from Firestore.")
+        } catch (e: Exception) {
+            Log.e("DownwardSync", "Failed to fetch teacher exams", e)
+        }
+    }
+
+    override suspend fun fetchAllAvailableExamsFromCloud() {
+        try {
+            val snapshot = firestore.collection("exams").get().await()
+
+            val examsToInsert = mutableListOf<Exam>()
+            val questionsToInsert = mutableListOf<Question>()
+
+            for (document in snapshot.documents) {
+                val dto = document.toObject(ExamDto::class.java) ?: continue
+
+                val exam = Exam(
+                    id = dto.id,
+                    teacherId = dto.teacherId,
+                    categoryId = dto.categoryId,
+                    title = dto.title,
+                    duration = dto.durationMillis.milliseconds,
+                    passPercentage = dto.passPercentage,
+                    totalScore = dto.totalScore,
+                    isSynced = true,
+                    isDeleted = false
+                )
+                examsToInsert.add(exam)
+
+
+                dto.questions.forEach { qDto ->
+                    val questionId=if (qDto.id.isNotBlank()){
+                        qDto.id
+                    }else{
+                        UUID.nameUUIDFromBytes(
+                            "${exam.id}|${qDto.text}".toByteArray()
+                        ).toString()
+                    }
+                    questionsToInsert.add(
+                        Question(
+                            id = questionId,
+                            examId = dto.id,
+                            text = qDto.text,
+                            options = qDto.options,
+                            correctAnswer = qDto.correctAnswer,
+                            mark = qDto.mark,
+                            isSynced = true
+                        )
+                    )
+                }
+            }
+
+            examDao.insertExams(examsToInsert)
+            examDao.insertQuestions(questionsToInsert)
+
+            Log.d("DownwardSync", "Synced ${examsToInsert.size} available exam(s) for student.")
+        } catch (e: Exception) {
+            Log.e("DownwardSync", "Failed to fetch available exams", e)
+        }
+    }
+
+    private fun triggerSync() {
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "sync_work",
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
 }

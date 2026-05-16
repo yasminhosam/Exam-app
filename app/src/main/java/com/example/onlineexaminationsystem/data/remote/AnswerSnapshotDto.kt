@@ -1,6 +1,7 @@
 package com.example.onlineexaminationsystem.data.remote
 
 data class AnswerSnapshotDto (
+    val id: String ="",
     val questionText: String = "",
     val options: List<String> = emptyList(),
     val correctAnswerIndex: Int = 0,

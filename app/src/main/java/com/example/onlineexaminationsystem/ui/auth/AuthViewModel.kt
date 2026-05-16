@@ -29,26 +29,19 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState = _uiState.asStateFlow()
 
-
     fun onLoginClick() {
-
         val state = _uiState.value
 
         val emailError = validateEmail(state.email)
         val passwordError = validatePassword(state.password)
 
         _uiState.update {
-            it.copy(
-                emailError = emailError,
-                passwordError = passwordError,
-                globalError = null
-            )
+            it.copy(emailError = emailError, passwordError = passwordError, globalError = null)
         }
 
         if (emailError != null || passwordError != null) return
 
         viewModelScope.launch {
-
             _uiState.update { it.copy(isLoading = true) }
 
             val result = authRepository.login(state.email, state.password)
@@ -57,34 +50,42 @@ class AuthViewModel @Inject constructor(
 
             result.onSuccess { user ->
                 val isVerified = authRepository.isEmailVerified()
-                Log.d("AuthViewModel", "SUCCESS: User logged in. isEmailVerified: $isVerified")
+                Log.d("AuthViewModel", "Login success. isEmailVerified=$isVerified")
+
                 if (!isVerified) {
                     _events.emit(AuthEvent.NavigateToVerifyEmail)
                     return@onSuccess
                 }
-                if (user.role == Role.STUDENT){
-                    studentRepository.fetchStudentHistoryFromCloud(user.id)
-                    examRepository.fetchAllAvailableExamsFromCloud()
+
+                if (user.role == Role.STUDENT) {
+
+                    viewModelScope.launch {
+                        studentRepository.fetchStudentHistoryFromCloud(user.id)
+                    }
+                    viewModelScope.launch {
+                        examRepository.fetchAllAvailableExamsFromCloud()
+                    }
                     _events.emit(AuthEvent.NavigateToStudent)
-                }
-                else {
-                    examRepository.fetchTeacherExamsFromCloud(user.id)
+                } else {
+
+                    viewModelScope.launch {
+                        examRepository.fetchTeacherExamsFromCloud(user.id)
+                    }
                     _events.emit(AuthEvent.NavigateToTeacher)
                 }
 
-                Log.d("AuthViewModel", "onLoginClick: ${user.role}")
+                Log.d("AuthViewModel", "Navigating for role: ${user.role}")
+
             }.onFailure { e ->
-                Log.e("AuthViewModel", "LOGIN FAILED CRITICALLY: ${e.message}", e)
+                Log.e("AuthViewModel", "Login failed: ${e.message}", e)
                 _uiState.update {
-                    it.copy(globalError = "Wrong email or password.Please try again")
+                    it.copy(globalError = "Wrong email or password. Please try again.")
                 }
             }
         }
     }
 
-
     fun onSignUpClick() {
-
         val state = _uiState.value
 
         val nameError = validateName(state.username)
@@ -103,7 +104,6 @@ class AuthViewModel @Inject constructor(
         if (nameError != null || emailError != null || passwordError != null) return
 
         viewModelScope.launch {
-
             _uiState.update { it.copy(isLoading = true) }
 
             val result = authRepository.signUp(
@@ -122,43 +122,36 @@ class AuthViewModel @Inject constructor(
                     _events.emit(AuthEvent.NavigateToVerifyEmail)
                     return@onSuccess
                 }
-
                 if (user.role == Role.STUDENT)
                     _events.emit(AuthEvent.NavigateToStudent)
                 else
                     _events.emit(AuthEvent.NavigateToTeacher)
+
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(globalError = "Signup failed.Please try again")
-                }
-                Log.d("AuthViewModel", "onSignUpClick:${e.message}")
+                _uiState.update { it.copy(globalError = "Signup failed. Please try again.") }
+                Log.d("AuthViewModel", "onSignUpClick: ${e.message}")
             }
         }
     }
-
 
     fun onForgetPasswordClick() {
-        val state=_uiState.value
+        val state = _uiState.value
 
-        val emailError=validateEmail(state.email)
-        _uiState.update { it.copy(emailError = emailError,globalError = null) }
-        if(emailError !=null) return
+        val emailError = validateEmail(state.email)
+        _uiState.update { it.copy(emailError = emailError, globalError = null) }
+        if (emailError != null) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-           val result=authRepository.resetPassword(state.email.trim())
+            val result = authRepository.resetPassword(state.email.trim())
             _uiState.update { it.copy(isLoading = false) }
-            when(result){
-                is Resource.Success->{
-                    _events.emit(AuthEvent.SendResetPasswordLink)
-                }
-                is Resource.Error->{
-                    val errorMessage= result.message
-                    _events.emit(AuthEvent.ShowError(errorMessage))
-                }
+            when (result) {
+                is Resource.Success -> _events.emit(AuthEvent.SendResetPasswordLink)
+                is Resource.Error   -> _events.emit(AuthEvent.ShowError(result.message))
             }
         }
-
     }
+
     private fun validateName(name: String): String? {
         if (name.trim().length < 2) return "Your name must be at least two characters"
         return null
@@ -166,9 +159,8 @@ class AuthViewModel @Inject constructor(
 
     private fun validateEmail(email: String): String? {
         if (email.isBlank()) return "Email cannot be empty"
-        val emailRegex="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
-        if (!email.matches(emailRegex.toRegex()))
-            return "Invalid email format"
+        val emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        if (!email.matches(emailRegex.toRegex())) return "Invalid email format"
         return null
     }
 
@@ -179,21 +171,10 @@ class AuthViewModel @Inject constructor(
         return null
     }
 
-    fun onEmailChange(email: String) {
-        _uiState.update { it.copy(email = email) }
-    }
-
-    fun onPasswordChange(password: String) {
-        _uiState.update { it.copy(password = password) }
-    }
-
-    fun onUsernameChange(username: String) {
-        _uiState.update { it.copy(username = username) }
-    }
-
-    fun onRoleChange(role: Role) {
-        _uiState.update { it.copy(selectedRole = role) }
-    }
+    fun onEmailChange(email: String) = _uiState.update { it.copy(email = email) }
+    fun onPasswordChange(password: String) = _uiState.update { it.copy(password = password) }
+    fun onUsernameChange(username: String) = _uiState.update { it.copy(username = username) }
+    fun onRoleChange(role: Role) = _uiState.update { it.copy(selectedRole = role) }
 }
 
 data class AuthUiState(
@@ -213,7 +194,5 @@ sealed class AuthEvent {
     object NavigateToTeacher : AuthEvent()
     object NavigateToVerifyEmail : AuthEvent()
     object SendResetPasswordLink : AuthEvent()
-    data class ShowError(val message: String):AuthEvent()
+    data class ShowError(val message: String) : AuthEvent()
 }
-
-

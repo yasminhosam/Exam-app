@@ -29,6 +29,7 @@ fun ExamDto.toRoomEntities(): Pair<Exam, List<Question>> {
     )
     val questions = questions.map { dto ->
         Question(
+            id=dto.id,
             examId = id,
             text = dto.text,
             options = dto.options,
@@ -56,6 +57,7 @@ fun Exam.toDto(questions: List<Question>):ExamDto{
 
 fun Question.toDto():QuestionDto{
     return QuestionDto(
+        id=id,
         text = text,
         options = options,
         correctAnswer = correctAnswer,
@@ -79,6 +81,7 @@ fun SubmittedExam.toDto(snapshots: List<AnswerSnapshot>):SubmittedExamDto{
 }
 fun AnswerSnapshot.toDto(): AnswerSnapshotDto {
     return AnswerSnapshotDto(
+        id=id,
         questionText =questionText ,
         options = options,
         correctAnswerIndex = correctAnswerIndex,

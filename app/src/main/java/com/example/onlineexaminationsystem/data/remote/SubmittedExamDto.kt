@@ -15,5 +15,5 @@ data class SubmittedExamDto(
     val grade:String="",
     val status: String="",
     val date: Long=0L,
-    val snapshots:List<AnswerSnapshotDto>
+    val snapshots:List<AnswerSnapshotDto> = emptyList()
 )

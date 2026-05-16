@@ -106,6 +106,8 @@ dependencies {
 
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 }
 
 secrets {

@@ -2,6 +2,7 @@ package com.example.onlineexaminationsystem.data.remote
 
 
 data class QuestionDto(
+    val id: String="",
     val text: String = "",
     val options: List<String> = emptyList(),
     val correctAnswer: Int = 0,
